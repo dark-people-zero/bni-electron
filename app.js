@@ -8,6 +8,9 @@ const io = require("socket.io-client");
 const os = require('os');
 const storage = require('electron-json-storage');
 storage.setDataPath(os.tmpdir());
+const UserAgent = require("user-agents");
+const moment = require("moment");
+const readerPdf = require('./readerPdf');
 
 
 autoUpdater.logger = log;
@@ -19,7 +22,9 @@ var templateMenu = [
     {
         label: 'Start Robot',
         click() { 
-            if(bankWindows) bankWindows.webContents.send("start");
+            if(bankWindows) {
+                bankWindows.webContents.send("start");
+            }
         }
     },
     {
@@ -31,7 +36,9 @@ var templateMenu = [
     {
         label: 'Reload',
         click() {
-            if(bankWindows) bankWindows.webContents.send("reload");
+            if(bankWindows) bankWindows.webContents.executeJavaScript(`
+                window.location.reload();
+            `)
         }
     }
 ]
@@ -93,27 +100,100 @@ function listRekeningWindows() {
     // listRekening.webContents.openDevTools();
 }
 
+var getDaysArray = function(start, end) {
+    for(var arr=[],dt=new Date(start); dt<=new Date(end); dt.setDate(dt.getDate()+1)){
+        arr.push(moment(dt));
+    }
+    return arr;
+};
+
 function createBankWindows() {
+    const userAgent = new UserAgent({ deviceCategory: 'desktop' });
     bankWindows = new BrowserWindow({
-        // autoHideMenuBar: true,
+        minWidth: 1000,
+        minHeight: 750,
+        width: 1000,
+        height: 750,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            // preload: path.join(__dirname, "preload/bni.js")
         },
-        // resizable: false
+        resizable: false
     });
     bankWindows.on('closed', () => {
         bankWindows = null;
         dataRekening.reset();
         listRekeningWindows();
     });
+    bankWindows.webContents.session.on("will-download", (event, item, webContent) => {
+        item.setSavePath(path.join(os.tmpdir(),item.getFilename()));
+        item.on('updated', (event, state) => {
+            if (state === 'interrupted') {
+                console.log('Download is interrupted but can be resumed')
+            }
+        })
+        item.once('done', async (event, state) => {
+            if (state === 'completed') {
+                const now = moment().format("YYYY-MM-DD");
+                const rangeDate = getDaysArray(now,now);
+                var data = await readerPdf(item.getSavePath(),rangeDate);
+                var rek = dataRekening.active();
+                socket.emit("updateData", {
+                    type: "mutasi",
+                    rek: rek,
+                    data: data,
+                    date: now
+                });
+                webContent.send("show:notif");
+            } else {
+              console.log(`Download failed: ${state}`)
+            }
+        })
+    })
+    
+    bankWindows.webContents.session.clearCache();
+    bankWindows.webContents.session.clearAuthCache();
+    bankWindows.webContents.session.clearStorageData();
+    bankWindows.webContents.setUserAgent(userAgent.toString());
+    var url = "https://ibank.bni.co.id/corp/AuthenticationController?__START_TRAN_FLAG__=Y&FORMSGROUP_ID__=AuthenticationFG&__EVENT_ID__=LOAD&FG_BUTTONS__=LOAD&ACTION.LOAD=Y&AuthenticationFG.LOGIN_FLAG=1&BANK_ID=BNI01&LANGUAGE_ID=002";
+    var urlHome = "https://ibank.bni.co.id/corp/L002/consumer/images/backgrounds/body-style-01.png";
 
-    // bankWindows.webContents.session.clearCache();
-    // bankWindows.webContents.session.clearStorageData();
+    try {
+        bankWindows.webContents.debugger.attach('1.3');
+    } catch (err) {
+        console.log('Debugger attach failed: ', err);
+    }
+    
+    bankWindows.webContents.debugger.on('detach', (event, reason) => {
+        console.log('Debugger detached due to: ', reason);
+    });
+      
+    bankWindows.webContents.debugger.on('message', async (event, method, params) => {
+        if (method === 'Network.responseReceived') {
+            var url1 = params.response.url;
+            if (url1 == url) {
+                var dt = dataRekening.active();
+                bankWindows.webContents.executeJavaScript(`
+                    document.querySelector('input[name="AuthenticationFG.USER_PRINCIPAL"]').value = "${dt.username}";
+                    document.querySelector('input[name="AuthenticationFG.ACCESS_CODE"]').value = "${dt.password}";
+                    document.querySelector('input[name="AuthenticationFG.VERIFICATION_CODE"]').focus();
+                `)
+            }
 
-    bankWindows.loadURL('https://ibank.bni.co.id/corp/AuthenticationController?__START_TRAN_FLAG__=Y&FORMSGROUP_ID__=AuthenticationFG&__EVENT_ID__=LOAD&FG_BUTTONS__=LOAD&ACTION.LOAD=Y&AuthenticationFG.LOGIN_FLAG=1&BANK_ID=BNI01&LANGUAGE_ID=002');
+            if (url1 == urlHome) {
+                const js = fs.readFileSync('./preload/bni.js', {
+                    encoding: "binary"
+                });
+
+                bankWindows.webContents.executeJavaScript(js);
+            }
+        }
+    })
+        
+    bankWindows.webContents.debugger.sendCommand('Network.enable');
+    bankWindows.loadURL(url);
     bankWindows.webContents.openDevTools();
+    
 }
 
 const func = {
@@ -181,7 +261,23 @@ ipcMain.on("update-mutasi", (e, res) => {
         rek: res.rek,
         data: res.data
     });
-})
+});
+ipcMain.on("update-mutasi", (e, res) => {
+    socket.emit("updateData", {
+        type: "mutasi",
+        rek: res.rek,
+        data: res.data,
+        date: res.date
+    });
+});
+ipcMain.on("update-saldo", (e, res) => {
+    socket.emit("updateData", {
+        type: "saldo",
+        rek: res.rek,
+        data: res.data,
+        date: res.date
+    });
+});
 
 autoUpdater.on('checking-for-update', () => {
     sendStatusToWindow("Check Vesion");
@@ -222,8 +318,10 @@ app.on('ready', function() {
     const menu = Menu.buildFromTemplate(templateMenu);
     Menu.setApplicationMenu(menu);
     createStarting();
-    // socket = io.connect("http://54.151.144.228:9992");
+    socket = io.connect("http://54.151.144.228:9994");
+    // socket = io.connect("http://localhost:9994");
     dataRekening.has();
+    // createBankWindows();
 });
 
 app.on('window-all-closed', () => {

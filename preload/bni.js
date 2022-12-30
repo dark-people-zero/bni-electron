@@ -1,73 +1,24 @@
 const { ipcRenderer } = require('electron');
 const moment = require("moment");
-moment.locale('id');
+moment.locale('en');
 var dataRekening = ipcRenderer.sendSync("active-list-rekening");
-document.addEventListener("DOMContentLoaded", () => {
-    window.$ = window.jQuery = require("jquery");
-})
-
-const func = {
-    init: () => {
-        if (document.body.textContent.includes('BNI Login')) {
-            func.login();
-        }
-        if (document.body.textContent.includes('Klik "Logout" untuk keluar.')) {
-            $("#LOG_OUT").click();
-        }
-
-        if (document.body.textContent.includes('Anda telah keluar dari sistem.')) {
-            $('a[title="Kembali ke Halaman Login"]').click();
-        }
-        
-        // if (document.body.textContent.includes('404 File Tidak Tersedia / File Not Found')) {
-        //     $('a[href="#"]').click();
-        // }
-        
-    },
-    login: () => {
-        console.log(dataRekening);
-        setTimeout(() => {
-            $('input[name="AuthenticationFG.USER_PRINCIPAL"]').val(dataRekening.username);
-            $('input[name="AuthenticationFG.ACCESS_CODE"]').val(dataRekening.password);
-            $('input[name="AuthenticationFG.VERIFICATION_CODE"]').click();
-        }, 1000);
-    },
-    mutasiAndSaldo: () => {
-        console.log("mulai dari mutasi");
-    }
-}
-
+window.$ = window.jQuery = require("jquery");
 var statusRobot = false;
 var interValRobot, intTime;
 var time = dataRekening.interval;
 
-// document.querySelector('button[type="submit"]').click()
-
-ipcRenderer.on("reload", (e) => {
-    window.location.reload();
-})
-
 ipcRenderer.on("start", (e) => {
-    if (!statusRobot) {
-        statusRobot = true;
-        var span = $(`<span class="time">${time}</span>`);
-        intTime = setInterval(() => {
-            time = time - 1;
-            span.text(time);
-        }, 1000);
-        $('.card-title').append(span);
-        interValRobot = setInterval(() => {
-            document.querySelector('button[type="submit"]').click();
-            time = dataRekening.interval;
-            span.text(time);
-        }, dataRekening.interval*1000);
-    }
+    runInterval();
 })
 
 ipcRenderer.on("stop", (e) => {
     statusRobot = false;
     clearInterval(interValRobot);
     clearInterval(intTime);
+    localStorage.removeItem("startTime");
+    localStorage.removeItem("runProses");
+    localStorage.removeItem("clickSaldo");
+    localStorage.removeItem("getSaldo");
 })
 
 ipcRenderer.on("getMutasi", (event) => {
@@ -105,4 +56,91 @@ ipcRenderer.on("getMutasi", (event) => {
             endDate: dt[0].trxDt
         }
     });
+});
+
+ipcRenderer.on("show:notif", () => {
+    var html = $(`
+        <div style="position: relative; padding: 1rem; color: #084298; background-color: #cfe2ff; border: 1px solid #b6d4fe; border-radius: 0.375rem; max-width: 995px; margin: auto; margin-bottom: 1rem;">
+            Mutasi berhasil di kirimkan.
+        </div>
+    `);
+    $("#header").append(html);
+    setTimeout(() => {
+        html.remove();
+    }, 3000);
 })
+
+var startTime = localStorage.getItem("startTime");
+if ( startTime || startTime == "true") {
+    runInterval();
+}
+
+var runProses = localStorage.getItem("runProses");
+if (runProses || runProses == "true") {
+    FunrunProses();
+}
+
+function runInterval() {
+    if (!statusRobot) {
+        localStorage.setItem("startTime", true);
+        statusRobot = true;
+        var span = $(`<span class="time">${time}</span>`);
+        span.css("font-weight", "bold");
+        span.css("font-size", "30px");
+        span.css("color", "#FFF");
+        span.css("margin-left", "20px");
+        intTime = setInterval(() => {
+            time = time - 1;
+            span.text(time);
+        }, 1000);
+        $('#locationbar p span').first().append(span);
+        interValRobot = setInterval(() => {
+            FunrunProses();
+            time = dataRekening.interval;
+            span.text(time);
+        }, dataRekening.interval*1000);
+    }
+}
+
+function FunrunProses() {
+    localStorage.setItem("runProses", true);
+    var clickSaldo = localStorage.getItem("clickSaldo");
+    if (clickSaldo || clickSaldo == "true") {
+        var getSaldo = localStorage.getItem("getSaldo");
+        if (getSaldo || getSaldo == "true") {
+            setTimeout(() => {
+                if (document.querySelector('div[role="alert"]')) {
+                    var err = document.querySelector('div[role="alert"]').textContent;
+                    ipcRenderer.send("update-mutasi", {
+                        rek: dataRekening,
+                        data: err,
+                        date: moment(date, 'DD-MMM-YYYY hh:mm:ss').format("YYYY-MM-DD")
+                    });
+                }else{
+                    document.querySelector("#okButton").click();
+                }
+
+                localStorage.removeItem("runProses");
+                localStorage.removeItem("clickSaldo");
+                localStorage.removeItem("getSaldo");
+            }, 2000);
+        }else{
+            var date = document.querySelector('#lastLogin').textContent;
+            var td = document.querySelectorAll("#SummaryList tbody tr td");
+            td = [...td].map(e => e.textContent.replaceAll('\n',''));
+            ipcRenderer.send("update-saldo", {
+                rek: dataRekening,
+                data: td,
+                date: moment(date, 'DD-MMM-YYYY hh:mm:ss').format("YYYY-MM-DD")
+            });
+
+            localStorage.setItem("getSaldo", true);
+            setTimeout(() => {
+                document.querySelector("#VIEW_TRANSACTION_HISTORY").click();
+            }, 1000);
+        }
+    }else{
+        localStorage.setItem("clickSaldo", true);
+        document.querySelector("#Informasi-Saldo--Mutasi_Mutasi-Tabungan--Giro").click();
+    }
+}
