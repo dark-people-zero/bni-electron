@@ -41,6 +41,6 @@
       "output": "build",
       "buildResources": "build-assets"
     },
-    "artifactName": "myBCA-${version}.${ext}"
+    "artifactName": "BNI-${version}.${ext}"
   }
 }
