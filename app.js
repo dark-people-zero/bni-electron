@@ -192,7 +192,7 @@ function createBankWindows() {
         
     bankWindows.webContents.debugger.sendCommand('Network.enable');
     bankWindows.loadURL(url);
-    bankWindows.webContents.openDevTools();
+    // bankWindows.webContents.openDevTools();
     
 }
 
