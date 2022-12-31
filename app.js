@@ -156,22 +156,24 @@ function createBankWindows() {
     bankWindows.webContents.session.clearStorageData();
     bankWindows.webContents.setUserAgent(userAgent.toString());
     var url = "https://ibank.bni.co.id/corp/AuthenticationController?__START_TRAN_FLAG__=Y&FORMSGROUP_ID__=AuthenticationFG&__EVENT_ID__=LOAD&FG_BUTTONS__=LOAD&ACTION.LOAD=Y&AuthenticationFG.LOGIN_FLAG=1&BANK_ID=BNI01&LANGUAGE_ID=002";
-    var urlHome = "https://ibank.bni.co.id/corp/L002/consumer/images/backgrounds/body-style-01.png";
+    var urlLang01 = "https://ibank.bni.co.id/corp/AuthenticationController?__START_TRAN_FLAG__=Y&FORMSGROUP_ID__=AuthenticationFG&__EVENT_ID__=LOAD&FG_BUTTONS__=LOAD&ACTION.LOAD=Y&AuthenticationFG.LOGIN_FLAG=1&BANK_ID=BNI01&LANGUAGE_ID=001";
 
     try {
         bankWindows.webContents.debugger.attach('1.3');
     } catch (err) {
         console.log('Debugger attach failed: ', err);
+        log.info('Debugger attach failed: ', err)
     }
     
     bankWindows.webContents.debugger.on('detach', (event, reason) => {
         console.log('Debugger detached due to: ', reason);
+        log.info('Debugger detached due to: ', reason);
     });
       
     bankWindows.webContents.debugger.on('message', async (event, method, params) => {
         if (method === 'Network.responseReceived') {
             var url1 = params.response.url;
-            if (url1 == url) {
+            if (url1 == url || url1 == urlLang01) {
                 var dt = dataRekening.active();
                 bankWindows.webContents.executeJavaScript(`
                     document.querySelector('input[name="AuthenticationFG.USER_PRINCIPAL"]').value = "${dt.username}";
@@ -180,8 +182,9 @@ function createBankWindows() {
                 `)
             }
 
-            if (url1 == urlHome) {
-                const js = fs.readFileSync('./preload/bni.js', {
+            if (url1.includes('body-style-01.png')) {
+                // log.info("inject script disini");
+                const js = fs.readFileSync(path.join(__dirname, 'preload/bni.js'), {
                     encoding: "binary"
                 });
 
