@@ -18,7 +18,7 @@ autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 log.info('App starting...');
 
-let statusRobot = false, interValRobot;
+let statusRobot = false;
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 var templateMenu = [
@@ -26,7 +26,7 @@ var templateMenu = [
         label: 'Start Robot',
         click() { 
             if (!statusRobot) {
-                script.countDown();
+                statusRobot = true;
                 script.FunrunProses();
             }
         }
@@ -44,19 +44,6 @@ var templateMenu = [
             if(bankWindows) bankWindows.webContents.executeJavaScript(`
                 window.location.reload();
             `)
-        }
-    },
-    {
-        label: "get Saldo",
-        async click() {
-            if (bankWindows) {
-                // document.querySelector("#SummaryList").outerHTML;
-                await bankWindows.webContents.executeJavaScript(`
-                    [...document.querySelectorAll("#SummaryList tbody tr td")].map(e => e.textContent.replaceAll('\n',''));
-                `, true).then((e) => {
-                    console.log(e);
-                })
-            }
         }
     }
 ]
@@ -164,6 +151,9 @@ function createBankWindows() {
                 });
                 script.createNotif();
                 script.countDown();
+                setTimeout(() => {
+                    script.FunrunProses();
+                }, rek.interval*1000);
             } else {
               console.log(`Download failed: ${state}`)
             }
@@ -200,21 +190,12 @@ function createBankWindows() {
                     document.querySelector('input[name="AuthenticationFG.VERIFICATION_CODE"]').focus();
                 `);
             }
-
-            // if (url1.includes('body-style-01.png')) {
-            //     // log.info("inject script disini");
-            //     const js = fs.readFileSync(path.join(__dirname, 'preload/bni.js'), {
-            //         encoding: "binary"
-            //     });
-
-            //     bankWindows.webContents.executeJavaScript(js);
-            // }
         }
     })
         
     bankWindows.webContents.debugger.sendCommand('Network.enable');
     bankWindows.loadURL(url);
-    bankWindows.webContents.openDevTools();
+    // bankWindows.webContents.openDevTools();
     
 }
 
@@ -297,35 +278,30 @@ const script = {
     },
     stopCountDown: () => {
         bankWindows.webContents.executeJavaScript(`clearInterval(timeInterval);`);
-        clearInterval(interValRobot);
         statusRobot = false;
     },
     FunrunProses: () => {
-        statusRobot = true;
         var dataRek = dataRekening.active();
-        interValRobot = setInterval(() => {
-            bankWindows.webContents.executeJavaScript('document.querySelector("#Informasi-Saldo--Mutasi_Mutasi-Tabungan--Giro").click();');
-            setTimeout(() => {
-                bankWindows.webContents.executeJavaScript('document.querySelector("#SummaryList").outerHTML;', true).then(e => {
-                    const dom = new JSDOM(e);
-                    var td = dom.window.document.querySelectorAll("table tbody tr td");
-                    var dt = [...td].map(e => e.textContent.replaceAll("\n", "").replaceAll(" ", ""));
-                    socket.emit("updateData", {
-                        type: "saldo",
-                        rek: dataRek,
-                        data: dt,
-                        date: moment().format("YYYY-MM-DD")
-                    });
+        bankWindows.webContents.executeJavaScript('document.querySelector("#Informasi-Saldo--Mutasi_Mutasi-Tabungan--Giro").click();');
+        setTimeout(() => {
+            bankWindows.webContents.executeJavaScript('document.querySelector("#SummaryList").outerHTML;', true).then(e => {
+                const dom = new JSDOM(e);
+                var td = dom.window.document.querySelectorAll("table tbody tr td");
+                var dt = [...td].map(e => e.textContent.replaceAll("\n", "").replaceAll(" ", ""));
+                socket.emit("updateData", {
+                    type: "saldo",
+                    rek: dataRek,
+                    data: dt,
+                    date: moment().format("YYYY-MM-DD")
+                });
+                setTimeout(() => {
+                    bankWindows.webContents.executeJavaScript('document.querySelector("#VIEW_TRANSACTION_HISTORY").click();');
                     setTimeout(() => {
-                        bankWindows.webContents.executeJavaScript('document.querySelector("#VIEW_TRANSACTION_HISTORY").click();');
-                        setTimeout(() => {
-                            bankWindows.webContents.executeJavaScript('document.querySelector("#okButton").click();');
-                            script.countDown();
-                        }, 2000);
-                    }, 1000);
-                })
-            }, 2000);
-        }, (dataRek.interval+5)*1000);
+                        bankWindows.webContents.executeJavaScript('document.querySelector("#okButton").click();');
+                    }, 2000);
+                }, 1000);
+            })
+        }, 1000);
     },
     createNotif: () => {
         bankWindows.webContents.executeJavaScript(`
@@ -347,35 +323,6 @@ const script = {
         `)
     }
 }
-
-ipcMain.on("get-list-rekening", (event) => event.returnValue = dataRekening.get());
-ipcMain.on("put-list-rekening", (event, data) => dataRekening.put(data));
-ipcMain.on("active-list-rekening", (event) => event.returnValue = dataRekening.active());
-ipcMain.on("play-mutasi", (event) => func.playMutasi());
-
-ipcMain.on("update-mutasi", (e, res) => {
-    socket.emit("updateData", {
-        type: "mutasi",
-        rek: res.rek,
-        data: res.data
-    });
-});
-ipcMain.on("update-mutasi", (e, res) => {
-    socket.emit("updateData", {
-        type: "mutasi",
-        rek: res.rek,
-        data: res.data,
-        date: res.date
-    });
-});
-ipcMain.on("update-saldo", (e, res) => {
-    socket.emit("updateData", {
-        type: "saldo",
-        rek: res.rek,
-        data: res.data,
-        date: res.date
-    });
-});
 
 autoUpdater.on('checking-for-update', () => {
     sendStatusToWindow("Check Vesion");
