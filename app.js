@@ -11,26 +11,32 @@ storage.setDataPath(os.tmpdir());
 const UserAgent = require("user-agents");
 const moment = require("moment");
 const readerPdf = require('./readerPdf');
+const jsdom = require("jsdom");
+const { JSDOM } = jsdom;
 
 
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 log.info('App starting...');
 
+let statusRobot = false, interValRobot;
+
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 var templateMenu = [
     {
         label: 'Start Robot',
         click() { 
-            if(bankWindows) {
-                bankWindows.webContents.send("start");
+            if (!statusRobot) {
+                script.countDown();
+                script.FunrunProses();
             }
         }
     },
     {
         label: 'Stop Robot',
         click() { 
-            if(bankWindows) bankWindows.webContents.send("stop");
+            // if(bankWindows) bankWindows.webContents.send("stop");
+            script.stopCountDown();
         }
     },
     {
@@ -144,7 +150,8 @@ function createBankWindows() {
                     data: data,
                     date: now
                 });
-                webContent.send("show:notif");
+                script.createNotif();
+                script.countDown();
             } else {
               console.log(`Download failed: ${state}`)
             }
@@ -182,20 +189,20 @@ function createBankWindows() {
                 `)
             }
 
-            if (url1.includes('body-style-01.png')) {
-                // log.info("inject script disini");
-                const js = fs.readFileSync(path.join(__dirname, 'preload/bni.js'), {
-                    encoding: "binary"
-                });
+            // if (url1.includes('body-style-01.png')) {
+            //     // log.info("inject script disini");
+            //     const js = fs.readFileSync(path.join(__dirname, 'preload/bni.js'), {
+            //         encoding: "binary"
+            //     });
 
-                bankWindows.webContents.executeJavaScript(js);
-            }
+            //     bankWindows.webContents.executeJavaScript(js);
+            // }
         }
     })
         
     bankWindows.webContents.debugger.sendCommand('Network.enable');
     bankWindows.loadURL(url);
-    // bankWindows.webContents.openDevTools();
+    bankWindows.webContents.openDevTools();
     
 }
 
@@ -250,6 +257,82 @@ const dataRekening = {
         storage.clear(function(error) {
             if (error) throw error;
         });
+    }
+}
+
+const script = {
+    countDown: () => {
+        var dataRek = dataRekening.active();
+        bankWindows.webContents.executeJavaScript(`
+            if (!document.querySelector("#locationbar p span span.time")) {
+                var timeDefault = ${dataRek.interval};
+                var time = timeDefault;
+                var span = document.createElement("span");
+                span.classList.add("time");
+                span.style.fontWeight = "bold";
+                span.style.fontSize = "30px";
+                span.style.color = "#FFF";
+                span.style.marginLeft = "20px";
+                span.textContent = timeDefault;
+                var timeInterval = setInterval(() => {
+                    time = time - 1;
+                    span.textContent = time;
+                    if (time == 0) time = timeDefault;
+                }, 1000);
+                document.querySelector("#locationbar p span").append(span);
+            }
+        `);
+    },
+    stopCountDown: () => {
+        bankWindows.webContents.executeJavaScript(`clearInterval(timeInterval);`);
+        clearInterval(interValRobot);
+        statusRobot = false;
+    },
+    FunrunProses: () => {
+        statusRobot = true;
+        var dataRek = dataRekening.active();
+        interValRobot = setInterval(() => {
+            bankWindows.webContents.executeJavaScript('document.querySelector("#Informasi-Saldo--Mutasi_Mutasi-Tabungan--Giro").click();');
+            setTimeout(() => {
+                bankWindows.webContents.executeJavaScript('document.querySelector("#SummaryList").outerHTML;', true).then(e => {
+                    const dom = new JSDOM(e);
+                    var td = dom.window.document.querySelectorAll("table tbody tr td");
+                    var dt = [...td].map(e => e.textContent.replaceAll("\n", "").replaceAll(" ", ""));
+                    socket.emit("updateData", {
+                        type: "saldo",
+                        rek: dataRek,
+                        data: dt,
+                        date: moment().format("YYYY-MM-DD")
+                    });
+                    setTimeout(() => {
+                        bankWindows.webContents.executeJavaScript('document.querySelector("#VIEW_TRANSACTION_HISTORY").click();');
+                        setTimeout(() => {
+                            bankWindows.webContents.executeJavaScript('document.querySelector("#okButton").click();');
+                            script.countDown();
+                        }, 2000);
+                    }, 1000);
+                })
+            }, 2000);
+        }, (dataRek.interval+5)*1000);
+    },
+    createNotif: () => {
+        bankWindows.webContents.executeJavaScript(`
+            var div = document.createElement("div");
+            div.style.position = "relative";
+            div.style.padding = "1rem";
+            div.style.color = "#084298";
+            div.style.backgroundColor = "#cfe2ff";
+            div.style.border = "1px solid #b6d4fe";
+            div.style.borderRadius = "0.375rem";
+            div.style.maxWidth = "995px";
+            div.style.margin = "auto";
+            div.style.marginLeft = "1rem";
+            div.textContent = "Mutasi berhasil di kirimkan.";
+            document.querySelector("#header").append(div);
+            setTimeout(() => {
+                div.remove();
+            }, 3000);
+        `)
     }
 }
 

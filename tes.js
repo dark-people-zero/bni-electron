@@ -1,18 +1,25 @@
-const readerPdf = require("./readerPdf");
-const moment = require("moment");
-const path = require("path");
-const os = require("os");
-const now = moment().format("YYYY-MM-DD");
-var getDaysArray = function(start, end) {
-    for(var arr=[],dt=new Date(start); dt<=new Date(end); dt.setDate(dt.getDate()+1)){
-        arr.push(moment(dt));
-    }
-    return arr;
-};
 
-(async() => {
-    var rangeDate = getDaysArray(now,now);
-    var x = await readerPdf(path.join(os.tmpdir(), 'OpTransactionHistoryTpr30-12-2022.pdf'),rangeDate);
-    console.log(x);
-})()
-// C:\Users\darkp\AppData\Local\Temp\OpTransactionHistoryTpr30-12-2022.pdf
+const jsdom = require("jsdom");
+const { JSDOM } = jsdom;
+var html = `
+    <table width="100%" summary="ringkasan semua rekening operasional" id="SummaryList">
+    <tbody><tr class="gradientbgonelinewithouttxt">
+    <th width="10%" class="listgreyrowtxtleftline"><span>Pilih</span></th><th width="14%" class="listgreyrowtxtleftline"><span><a id="HREF_SummaryList_Header2" name="HREF_SummaryList_Header2" class="blacklink" title="Klik untuk mengurutkan berdasarkan Nomor Rekening" href="Finacle;jsessionid=0000gUWzxH1vX0cCZTE_bUhyj1W:17gv0f8th?bwayparam=P6d3fGrl7KALfxkhnii1%2BK%2BN%2F6RLS8ZPQTGQ9QThPPii7jeE%2F3scrz1gLX0Q2BseOj2cRpl6QqP2%0D%0AeBwk2GxWtD888%2FbrBvdMpHDjObE%2Fhp2Q8%2BLVhMgjLwBm%2FPqJSBdFZjb21nvAcT2%2F%2BGwZ6UbOIVtfGRKO%0D%0AJOod0evausSLpATramq5dY%2Bwm3uPm%2Fp3Y7gqVhfUXqkMjXGoiVDX71ygwsSDSTOwPn2SOETjwnKptCvo%0D%0A5y2YITMW2loEMP2ko8g5IJDX30VNkt8xn0iYYFUPjjLnl01JoCu%2BAV8BLLKoT5U%3D">Nomor Rekening</a></span></th><th width="10%" class="listgreyrowtxtleftline"><span><a id="HREF_SummaryList_Header3" name="HREF_SummaryList_Header3" class="blacklink" title="Klik untuk mengurutkan berdasarkan Nama Singkat" href="Finacle;jsessionid=0000gUWzxH1vX0cCZTE_bUhyj1W:17gv0f8th?bwayparam=P6d3fGrl7KALfxkhnii1%2BK%2BN%2F6RLS8ZPQTGQ9QThPPii7jeE%2F3scrz1gLX0Q2BseOj2cRpl6QqP2%0D%0AeBwk2GxWtD888%2FbrBvdMpHDjObE%2Fhp2Q8%2BLVhMgjLwBm%2FPqJSBdFZjb21nvAcT2%2F%2BGwZ6UbOIVtfGRKO%0D%0AJOod0evausSLpATramq5dY%2Bwm3uPm%2Fp3Y7gqFHTfeaTibwsgreBIynimUs7Ns4jwka9LiECdd83tW7WU%0D%0AIomvTgEamqnht2606OdftRdotYfaJhkSKV3Olfu%2F1B9iSqfATUihhqRI9KO5EJw%3D">Nama Singkat</a></span></th><th width="12%" class="listgreyrowtxtleftline"><span><a id="HREF_SummaryList_Header4" name="HREF_SummaryList_Header4" class="blacklink" title="Klik untuk mengurutkan berdasarkan Produk" href="Finacle;jsessionid=0000gUWzxH1vX0cCZTE_bUhyj1W:17gv0f8th?bwayparam=P6d3fGrl7KALfxkhnii1%2BK%2BN%2F6RLS8ZPQTGQ9QThPPii7jeE%2F3scrz1gLX0Q2BseOj2cRpl6QqP2%0D%0AeBwk2GxWtD888%2FbrBvdMpHDjObE%2Fhp2Q8%2BLVhMgjLwBm%2FPqJSBdFZjb21nvAcT2%2F%2BGwZ6UbOIVtfGRKO%0D%0AJOod0evausSLpARXxQejnBNuv5tr57ucpfFy4SdcyXvUYjOBPgspvX7Wps7Ns4jwka9LiECdd83tW7WU%0D%0AIomvTgEamqnht2606OdftRdotYfaJhkSKV3Olfu%2F1B9iSqfATUihhqRI9KO5EJw%3D">Produk</a></span></th><th width="10%" class="listboldtxtwithline"><span><a id="HREF_SummaryList_Header5" name="HREF_SummaryList_Header5" class="blacklink" title="Klik untuk mengurutkan berdasarkan Nomor CIF" href="Finacle;jsessionid=0000gUWzxH1vX0cCZTE_bUhyj1W:17gv0f8th?bwayparam=P6d3fGrl7KALfxkhnii1%2BK%2BN%2F6RLS8ZPQTGQ9QThPPii7jeE%2F3scrz1gLX0Q2BseOj2cRpl6QqP2%0D%0AeBwk2GxWtD888%2FbrBvdMpHDjObE%2Fhp2Q8%2BLVhMgjLwBm%2FPqJSBdFZjb21nvAcT2%2F%2BGwZ6UbOIVtfGRKO%0D%0AJOod0evausSLpATHn2i9%2Fx4HbWCseu6qes01YfibVDxMMczRIUjDXlnddhvck4rOq%2FcxmL9a7XLQF%2FJZ%0D%0Ad3p5A8Erz8iEjHhi9AReS0g7beHaUbeWc%2Bb%2BIFtvkSlysf1PBVXTu7Jq0s%2FhBcs%3D">Nomor CIF</a></span></th><th width="8%" class="listboldtxtwithline"><span><a id="HREF_SummaryList_Header6" name="HREF_SummaryList_Header6" class="blacklink" title="Klik untuk mengurutkan berdasarkan Mata Uang" href="Finacle;jsessionid=0000gUWzxH1vX0cCZTE_bUhyj1W:17gv0f8th?bwayparam=P6d3fGrl7KALfxkhnii1%2BK%2BN%2F6RLS8ZPQTGQ9QThPPii7jeE%2F3scrz1gLX0Q2BseOj2cRpl6QqP2%0D%0AeBwk2GxWtD888%2FbrBvdMpHDjObE%2Fhp2Q8%2BLVhMgjLwBm%2FPqJSBdFZjb21nvAcT2%2F%2BGwZ6UbOIVtfGRKO%0D%0AJOod0evausSLpAQAl%2Fc0DlcRW80MP0SFxQWfs3G6nEbAwpPpyant0M4jGwxEPFSaN4IcfLVXNnKSQOeB%0D%0AJ4E3rqw6v8E6zBg%2FhCeuhqx5iMIiJpduOu5rQlpIK1KjtBA8qFmeuNF4t8gof%2F0%3D">Mata Uang</a></span></th><th width="14%" class="amountrightalignbld"><span>Saldo</span></th></tr>
+    <tr><td colspan="7" class="linesbg"></td></tr><tr id="0" class="listwhiterow">
+    <td>
+    <input type="radio" name="AccountSummaryFG.SELECTED_INDEX" id="AccountSummaryFG.SELECTED_INDEX" value="0" checked="checked" class="absmiddle"></td><td class="listgreyrowtxtleftline">     
+    <a href="Finacle;jsessionid=0000gUWzxH1vX0cCZTE_bUhyj1W:17gv0f8th?bwayparam=fv5xV7ArSHzJfx%2BZhI%2BUPchGSweiVDWmMRNSOEjqhoIfvrjEwvbIUP5PUsGZbmb53rwtz0LdiRpz%0D%0AyTVDD0p4Hx2Cpxh6LuQcuHyyD9IU%2BfiMYW8kGoCHu9AadNaw4GkMJh920TvxuUnjZ71Ok1wooDLnl01J%0D%0AoCu%2BAV8BLLKoT5U%3D" title="Lihat Detil rekening" id="HREF_actNoOutput[0]" name="HREF_AccountSummaryFG.ACCOUNT_NUMBER_ARRAY[0]" class="bluelink">00000001354008613</a></td><td class="listgreyrowtxtleftline">
+    <span class="searchsimpletext" id="HREF_actNicNameOutput[0]">&nbsp;</span></td><td>
+    <span class="searchsimpletext" id="HREF_AccountSummaryFG.PRODUCT_CATEGORY_ARRAY[0]">BNI TAPLUS</span></td><td class="textcenteralign">
+    <span class="searchsimpletext" id="HREF_custIDOutput[0]">10256444860</span></td><td class="textcenteralign">
+    <span class="searchsimpletext" id="actCurrencyOutput[0]">IDR</span></td><td class="amountrightalign">
+    <span class="searchsimpletext" id="HREF_actBalOutput[0]">-31,500.00</span></td></tr>
+    <tr><td colspan="7" class="linesbg"></td></tr></tbody></table>
+`;
+
+const dom = new JSDOM(html);
+
+var td = dom.window.document.querySelectorAll("table tbody tr td");
+var dt = [...td].map(e => e.textContent.replaceAll("\n", "").replaceAll(" ", ""));
+console.log(dt);
+// console.log(dom.window.document.querySelector("p").textContent);
