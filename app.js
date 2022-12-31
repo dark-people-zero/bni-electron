@@ -12,7 +12,6 @@ const UserAgent = require("user-agents");
 const moment = require("moment");
 const readerPdf = require('./readerPdf');
 
-
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 log.info('App starting...');
@@ -39,6 +38,19 @@ var templateMenu = [
             if(bankWindows) bankWindows.webContents.executeJavaScript(`
                 window.location.reload();
             `)
+        }
+    },
+    {
+        label: "get Saldo",
+        async click() {
+            if (bankWindows) {
+                // document.querySelector("#SummaryList").outerHTML;
+                await bankWindows.webContents.executeJavaScript(`
+                    [...document.querySelectorAll("#SummaryList tbody tr td")].map(e => e.textContent.replaceAll('\n',''));
+                `, true).then((e) => {
+                    console.log(e);
+                })
+            }
         }
     }
 ]
@@ -179,7 +191,7 @@ function createBankWindows() {
                     document.querySelector('input[name="AuthenticationFG.USER_PRINCIPAL"]').value = "${dt.username}";
                     document.querySelector('input[name="AuthenticationFG.ACCESS_CODE"]').value = "${dt.password}";
                     document.querySelector('input[name="AuthenticationFG.VERIFICATION_CODE"]').focus();
-                `)
+                `);
             }
 
             if (url1.includes('body-style-01.png')) {
