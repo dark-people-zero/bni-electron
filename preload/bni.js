@@ -64,6 +64,8 @@ ipcRenderer.on("show:notif", () => {
             Mutasi berhasil di kirimkan.
         </div>
     `);
+    var html = document.createElement("div");
+    
     $("#header").append(html);
     setTimeout(() => {
         html.remove();
