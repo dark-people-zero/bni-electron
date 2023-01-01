@@ -1,6 +1,6 @@
 {
   "name": "bni",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Aplikasi scrapper Bank BNI",
   "main": "app.js",
   "scripts": {
