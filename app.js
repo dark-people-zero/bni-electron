@@ -34,7 +34,7 @@ var templateMenu = [
     {
         label: 'Stop Robot',
         click() { 
-            // if(bankWindows) bankWindows.webContents.send("stop");
+            statusRobot = false;
             script.stopCountDown();
         }
     },
@@ -152,7 +152,7 @@ function createBankWindows() {
                 script.createNotif();
                 script.countDown();
                 setTimeout(() => {
-                    script.FunrunProses();
+                    if (statusRobot) script.FunrunProses();
                 }, rek.interval*1000);
             } else {
               console.log(`Download failed: ${state}`)
