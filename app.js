@@ -324,6 +324,11 @@ const script = {
     }
 }
 
+ipcMain.on("get-list-rekening", (event) => event.returnValue = dataRekening.get());
+ipcMain.on("put-list-rekening", (event, data) => dataRekening.put(data));
+ipcMain.on("active-list-rekening", (event) => event.returnValue = dataRekening.active());
+ipcMain.on("play-mutasi", (event) => func.playMutasi());
+
 autoUpdater.on('checking-for-update', () => {
     sendStatusToWindow("Check Vesion");
 })
