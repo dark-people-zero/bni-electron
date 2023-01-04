@@ -12,6 +12,7 @@ const UserAgent = require("user-agents");
 const moment = require("moment");
 const readerPdf = require('./readerPdf');
 const jsdom = require("jsdom");
+const GoogleSheet = require("./googleSheet");
 const { JSDOM } = jsdom;
 
 autoUpdater.logger = log;
@@ -48,7 +49,7 @@ var templateMenu = [
     }
 ]
 
-let starting, listRekening, bankWindows, socket;
+let starting, listRekening, bankWindows, socket, googleSheet;
 function sendStatusToWindow(text) {
     log.info(text);
     starting.webContents.send('message', text);
@@ -114,6 +115,15 @@ var getDaysArray = function(start, end) {
 
 function createBankWindows() {
     const userAgent = new UserAgent({ deviceCategory: 'desktop' });
+    const dataConfigGoogleSheet = configGoogleSheet.get();
+    if (dataConfigGoogleSheet.status) {
+        googleSheet = new GoogleSheet({
+            keyFile: path.join(__dirname, "credentials.json"),
+            spreadsheetId: dataConfigGoogleSheet.spreadsheetId,
+            range: dataConfigGoogleSheet.range,
+            keys: ["tanggal","transaksi","type","jumlah","saldo"],
+        });
+    }
     bankWindows = new BrowserWindow({
         minWidth: 1000,
         minHeight: 750,
@@ -127,6 +137,7 @@ function createBankWindows() {
     });
     bankWindows.on('closed', () => {
         bankWindows = null;
+        googleSheet = null;
         dataRekening.reset();
         listRekeningWindows();
     });
@@ -149,6 +160,7 @@ function createBankWindows() {
                     data: data,
                     date: now
                 });
+                if(googleSheet) await googleSheet.insert(data);
                 script.createNotif();
                 script.countDown();
                 setTimeout(() => {
@@ -324,10 +336,35 @@ const script = {
     }
 }
 
+const configGoogleSheet = {
+    has: () => {
+        storage.has('config-google-sheet-bni', function(error, hasKey) {
+            if (error) throw error;
+          
+            if (!hasKey) {
+                storage.set('config-google-sheet-bni', {}, function(error) {
+                    if (error) throw error;
+                });
+            }
+        });
+    },
+    get: () => {
+        return storage.getSync('config-google-sheet-bni');
+    },
+    put: (data) => {
+        storage.set('config-google-sheet-bni', data, function(error) {
+            if (error) throw error;
+        });
+    },
+}
+
 ipcMain.on("get-list-rekening", (event) => event.returnValue = dataRekening.get());
 ipcMain.on("put-list-rekening", (event, data) => dataRekening.put(data));
 ipcMain.on("active-list-rekening", (event) => event.returnValue = dataRekening.active());
 ipcMain.on("play-mutasi", (event) => func.playMutasi());
+
+ipcMain.on("get-config-google-sheet", (event) => event.returnValue = configGoogleSheet.get());
+ipcMain.on("put-config-google-sheet", (event, data) => configGoogleSheet.put(data));
 
 autoUpdater.on('checking-for-update', () => {
     sendStatusToWindow("Check Vesion");
@@ -371,6 +408,7 @@ app.on('ready', function() {
     socket = io.connect("http://54.151.144.228:9994");
     // socket = io.connect("http://localhost:9994");
     dataRekening.has();
+    configGoogleSheet.has();
     // createBankWindows();
 });
 

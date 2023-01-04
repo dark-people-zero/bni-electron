@@ -19,6 +19,24 @@
     <div class="container" id="mainContainer">
         <div class="main-container">
             <div class="content">
+                <div class="d-flex mb-3">
+                    <a href="javascript:void(0);" id="setGoogleSheet" class="btn d-flex align-items-center btn-outline-info btn-sm me-2 d-none">
+                        <span class="material-symbols-outlined">Settings</span>
+                        <span class="ms-2">Set Google Sheet</span>
+                    </a>
+                    <a href="javascript:void(0);" id="updateGoogleSheet" class="btn d-flex align-items-center btn-outline-info btn-sm me-2  d-none">
+                        <span class="material-symbols-outlined">app_registration</span>
+                        <span class="ms-2">Update Google Sheet</span>
+                    </a>
+                    <a href="javascript:void(0);" id="startGoogleSheet" class="btn d-flex align-items-center btn-outline-success btn-sm me-2 d-none">
+                        <span class="material-symbols-outlined">play_circle</span>
+                        <span class="ms-2">Active Google Sheet</span>
+                    </a>
+                    <a href="javascript:void(0);" id="stopGoogleSheet" class="btn d-flex align-items-center btn-outline-warning btn-sm me-2 d-none">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span class="ms-2">Non Active Google Sheet</span>
+                    </a>
+                </div>
                 <div class="table-responsive font-monospace position-relative">
                     <div class="p-2 d-flex justify-content-between align-items-center mb-3">
                         <span class="fw-bold">List Rekening</span>
@@ -84,6 +102,37 @@
                     <div class="modal-footer">
                         <button type="reset" class="btn btn-secondary">Reset</button>
                         <button type="submit" class="btn btn-primary" id="btnSimpan">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalGoogleSheet" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-6" id="titleGoogleSheet">Set Config Google Sheet</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formGoogleSheet">
+                    <div class="modal-body">
+                        <input type="hidden" name="method" value="post" id="typeFormGoogleSheet">
+                        <div class="row">
+                            <div class="mb-3">
+                                <label for="spreadsheetId" class="form-label">Spreadsheet ID</label>
+                                <input type="text" class="form-control form-control-sm" id="spreadsheetId" placeholder="1T6C4iNhHEyyMH9h3gGW_Bshg7OzLkyqWamcnzLy6cXk" required name="spreadsheetId">
+                            </div>
+                            <div class="mb-3">
+                                <label for="range" class="form-label">range</label>
+                                <input type="text" class="form-control form-control-sm" id="range" placeholder="Mutasi!A7:D" required name="range">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="reset" class="btn btn-secondary">Reset</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
                     </div>
                 </form>
             </div>

@@ -2,6 +2,7 @@ window.$ = window.jQuery = require("jquery");
 const { ipcRenderer } = require('electron');
 
 var dataRekening = ipcRenderer.sendSync("get-list-rekening");
+var configGoogleSheet = ipcRenderer.sendSync("get-config-google-sheet");
 var tableRekening = $("#tableRekening");
 
 function setTable(data) {
@@ -75,7 +76,39 @@ function setTable(data) {
     }
 }
 
+function updateBtnConfigGoogleSheet() {
+    if (configGoogleSheet.status !== undefined) {
+        $("#setGoogleSheet").addClass("d-none");
+        $("#updateGoogleSheet").removeClass("d-none");
+        if (configGoogleSheet.status) {
+            $("#startGoogleSheet").addClass("d-none");
+            $("#stopGoogleSheet").removeClass("d-none");
+        }else{
+            $("#startGoogleSheet").removeClass("d-none");
+            $("#stopGoogleSheet").addClass("d-none");
+        }
+    }else{
+        $("#setGoogleSheet").removeClass("d-none");
+    }
+
+    $(".loading").removeClass("show");
+}
+
+$("#setGoogleSheet").click(() => {
+    $("#typeFormGoogleSheet").val("post");
+    $("#titleGoogleSheet").text("Set Config Google Sheet");
+    $("#modalGoogleSheet").modal("show");
+});
+$("#updateGoogleSheet").click(() => {
+    $("#typeFormGoogleSheet").val("put");
+    $("#titleGoogleSheet").text("Update Config Google Sheet");
+    $("#spreadsheetId").val(configGoogleSheet.spreadsheetId);
+    $("#range").val(configGoogleSheet.range);
+    $("#modalGoogleSheet").modal("show");
+});
+
 setTable(dataRekening);
+updateBtnConfigGoogleSheet();
 
 $("#searchRekening").keyup(function() {
     var val = $(this).val();
@@ -96,7 +129,6 @@ $("#btnAdd").click(() => {
     $('input[name="method"]').val("post");
     $("#modalForm").modal("show");
 })
-
 
 $("#formGlobal").submit(function(e) {
     e.preventDefault();
@@ -127,4 +159,42 @@ $("#formGlobal").submit(function(e) {
 
 $("#modalForm").on("hidden.bs.modal", e => {
     $("#formGlobal").trigger("reset");
+})
+
+$("#modalGoogleSheet").on("hidden.bs.modal", e => {
+    $("#formGoogleSheet").trigger("reset");
+})
+
+$("#formGoogleSheet").submit(function(e) {
+    e.preventDefault();
+    $("#modalGoogleSheet").modal("hide");
+    $(".loading").addClass("show");
+    var method = $("#typeFormGoogleSheet").val();
+    var spreadsheetId = $("#spreadsheetId").val();
+    var range = $("#range").val();
+
+    configGoogleSheet.spreadsheetId = spreadsheetId;
+    configGoogleSheet.range = range;
+    
+    if (method == "post") configGoogleSheet.status = true;
+
+    ipcRenderer.send("put-config-google-sheet", configGoogleSheet);
+
+    updateBtnConfigGoogleSheet();
+});
+
+$("#startGoogleSheet").click(() => {
+    configGoogleSheet.status = true;
+    $(".loading").addClass("show");
+    ipcRenderer.send("put-config-google-sheet", configGoogleSheet);
+
+    updateBtnConfigGoogleSheet();
+})
+
+$("#stopGoogleSheet").click(() => {
+    configGoogleSheet.status = false;
+    $(".loading").addClass("show");
+    ipcRenderer.send("put-config-google-sheet", configGoogleSheet);
+
+    updateBtnConfigGoogleSheet();
 })
